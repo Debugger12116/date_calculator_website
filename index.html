@@ -138,6 +138,12 @@
     display: none;
   }
 
+  @media(max-width: 599px) {
+    input[type="date"],
+    input[type="number"],
+    select { font-size: 16px; }
+  }
+
   @media(min-width: 600px) { .tool-desc { display: block; } }
 
   .chevron {
@@ -310,6 +316,12 @@
     flex: 1;
     height: 1px;
     background: var(--line);
+  }
+
+  @media(max-width: 599px) {
+    input[type="date"],
+    input[type="number"],
+    select { font-size: 16px; }
   }
 
   @media(min-width: 600px) {
