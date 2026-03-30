@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Date Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --paper-warm: #ede6d4;
+    --amber: #d4820a;
+    --amber-light: #f0a830;
+    --amber-pale: #fdf3dc;
+    --rust: #b54a1e;
+    --teal: #1e6b6b;
+    --line: rgba(26,18,8,0.12);
+    --shadow: rgba(26,18,8,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(transparent, transparent 27px, var(--line) 27px, var(--line) 28px);
+    background-attachment: fixed;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.6;
+  }
+
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 24px 48px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+  }
+
+  header span {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 500;
+  }
+
+  .today-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    border: 1.5px solid var(--ink);
+    background: var(--amber-pale);
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tool-block {
+    border: 1.5px solid var(--ink);
+    border-top: none;
+    background: var(--paper);
+    transition: background 0.2s;
+    overflow: hidden;
+  }
+
+  .tool-block:first-child { border-top: 1.5px solid var(--ink); }
+
+  .tool-header {
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .tool-header:hover { background: var(--amber-pale); }
+  .tool-block.open .tool-header {
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--amber-pale);
+  }
+
+  .tool-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--amber);
+    min-width: 24px;
+  }
+
+  .tool-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    flex: 1;
+  }
+
+  .tool-desc {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(26,18,8,0.45);
+    flex: 2;
+    display: none;
+  }
+
+  @media(min-width: 600px) { .tool-desc { display: block; } }
+
+  .chevron {
+    font-size: 0.75rem;
+    color: var(--amber);
+    transition: transform 0.25s;
+  }
+  .tool-block.open .chevron { transform: rotate(180deg); }
+
+  .tool-body {
+    display: none;
+    padding: 32px 28px;
+    animation: slideDown 0.2s ease;
+  }
+
+  .tool-block.open .tool-body { display: block; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: rgba(26,18,8,0.5);
+  }
+
+  input[type="date"],
+  input[type="number"] {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+    border: 1.5px solid var(--ink);
+    background: white;
+    color: var(--ink);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]:focus,
+  input[type="number"]:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(212,130,10,0.12);
+  }
+
+  input[type="number"] { max-width: 160px; }
+
+  select {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border: 1.5px solid var(--ink);
+    background: white;
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  select:focus { border-color: var(--amber); }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 11px 24px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--amber); }
+  .btn:active { transform: scale(0.98); }
+
+  .result-box {
+    background: var(--amber-pale);
+    border: 1.5px solid var(--amber);
+    padding: 20px 24px;
+    display: none;
+  }
+
+  .result-box.show { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+
+  .result-main {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .result-sub {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(26,18,8,0.5);
+  }
+
+  .result-detail {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .result-tag {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid var(--line);
+    color: rgba(26,18,8,0.6);
+  }
+
+  .error-box {
+    background: #fff0ed;
+    border: 1.5px solid var(--rust);
+    padding: 12px 18px;
+    font-size: 0.8rem;
+    color: var(--rust);
+    display: none;
+  }
+
+  .error-box.show { display: block; }
+
+  .divider-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(26,18,8,0.35);
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .divider-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  footer {
+    text-align: center;
+    padding: 32px;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(26,18,8,0.3);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Date Calculator</h1>
+  <div class="today-badge" id="todayBadge"></div>
+</header>
+
+<main>
+
+  <!-- Tool 1: Date Difference -->
+  <div class="tool-block open" id="block1">
+    <div class="tool-header" onclick="toggle('block1')">
+      <span class="tool-num">I.</span>
+      <span class="tool-title">Days Between Dates</span>
+      <span class="tool-desc">How far apart are two dates?</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="tool-body">
+      <div class="form-row">
+        <div class="field">
+          <label>From Date</label>
+          <input type="date" id="diff_from">
+        </div>
+        <div class="field">
+          <label>To Date</label>
+          <input type="date" id="diff_to">
+        </div>
+        <button class="btn" onclick="calcDiff()">Calculate</button>
+      </div>
+      <div class="error-box" id="diff_err"></div>
+      <div class="result-box" id="diff_result">
+        <div class="result-sub">Difference</div>
+        <div class="result-main" id="diff_main"></div>
+        <div class="result-detail" id="diff_detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool 2: Add / Subtract Days -->
+  <div class="tool-block" id="block2">
+    <div class="tool-header" onclick="toggle('block2')">
+      <span class="tool-num">II.</span>
+      <span class="tool-title">Add or Subtract Days</span>
+      <span class="tool-desc">What date is N days from a given date?</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="tool-body">
+      <div class="form-row">
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="add_date">
+        </div>
+        <div class="field" style="flex:0">
+          <label>Operation</label>
+          <select id="add_op">
+            <option value="add">Add (+)</option>
+            <option value="sub">Subtract (−)</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0">
+          <label>Days</label>
+          <input type="number" id="add_days" min="0" max="99999" placeholder="e.g. 30">
+        </div>
+        <button class="btn" onclick="calcAdd()">Calculate</button>
+      </div>
+      <div class="error-box" id="add_err"></div>
+      <div class="result-box" id="add_result">
+        <div class="result-sub" id="add_sub"></div>
+        <div class="result-main" id="add_main"></div>
+        <div class="result-detail" id="add_detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool 3: What day is it in N days? -->
+  <div class="tool-block" id="block3">
+    <div class="tool-header" onclick="toggle('block3')">
+      <span class="tool-num">III.</span>
+      <span class="tool-title">From Today</span>
+      <span class="tool-desc">What date is it in N days from now?</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="tool-body">
+      <div class="form-row">
+        <div class="field" style="flex:0">
+          <label>Direction</label>
+          <select id="from_dir">
+            <option value="future">In the future</option>
+            <option value="past">In the past</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0">
+          <label>Days</label>
+          <input type="number" id="from_days" min="0" max="99999" placeholder="e.g. 100">
+        </div>
+        <button class="btn" onclick="calcFromToday()">Calculate</button>
+      </div>
+      <div class="error-box" id="from_err"></div>
+      <div class="result-box" id="from_result">
+        <div class="result-sub" id="from_sub"></div>
+        <div class="result-main" id="from_main"></div>
+        <div class="result-detail" id="from_detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool 4: Age Calculator -->
+  <div class="tool-block" id="block4">
+    <div class="tool-header" onclick="toggle('block4')">
+      <span class="tool-num">IV.</span>
+      <span class="tool-title">Age Calculator</span>
+      <span class="tool-desc">How old is someone born on a given date?</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="tool-body">
+      <div class="form-row">
+        <div class="field">
+          <label>Date of Birth</label>
+          <input type="date" id="age_dob">
+        </div>
+        <div class="field">
+          <label>As of Date</label>
+          <input type="date" id="age_as_of">
+        </div>
+        <button class="btn" onclick="calcAge()">Calculate</button>
+      </div>
+      <div class="error-box" id="age_err"></div>
+      <div class="result-box" id="age_result">
+        <div class="result-sub">Age</div>
+        <div class="result-main" id="age_main"></div>
+        <div class="result-detail" id="age_detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool 5: Weekday of a date -->
+  <div class="tool-block" id="block5">
+    <div class="tool-header" onclick="toggle('block5')">
+      <span class="tool-num">V.</span>
+      <span class="tool-title">Day of the Week</span>
+      <span class="tool-desc">What weekday falls on a specific date?</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="tool-body">
+      <div class="form-row">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="dow_date">
+        </div>
+        <button class="btn" onclick="calcDOW()">Calculate</button>
+      </div>
+      <div class="error-box" id="dow_err"></div>
+      <div class="result-box" id="dow_result">
+        <div class="result-sub">Day of the Week</div>
+        <div class="result-main" id="dow_main"></div>
+        <div class="result-detail" id="dow_detail"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer></footer>
+
+<script>
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Today badge
+const today = new Date();
+document.getElementById('todayBadge').textContent =
+  `Today — ${DAYS[today.getDay()]}, ${MONTHS_SHORT[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+
+// Set default values
+function todayStr() {
+  return today.toISOString().split('T')[0];
+}
+
+document.getElementById('diff_from').value = todayStr();
+document.getElementById('diff_to').value = todayStr();
+document.getElementById('add_date').value = todayStr();
+document.getElementById('age_dob').value = '';
+document.getElementById('age_as_of').value = todayStr();
+document.getElementById('dow_date').value = todayStr();
+
+function toggle(id) {
+  const block = document.getElementById(id);
+  block.classList.toggle('open');
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(d) {
+  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function formatDateShort(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function tag(text) {
+  return `<span class="result-tag">${text}</span>`;
+}
+
+function showResult(id, main, sub, details) {
+  document.getElementById(id + '_err').classList.remove('show');
+  const box = document.getElementById(id + '_result');
+  box.classList.add('show');
+  if (document.getElementById(id + '_sub')) document.getElementById(id + '_sub').textContent = sub || '';
+  document.getElementById(id + '_main').textContent = main;
+  document.getElementById(id + '_detail').innerHTML = details || '';
+}
+
+function showError(id, msg) {
+  document.getElementById(id + '_result').classList.remove('show');
+  const err = document.getElementById(id + '_err');
+  err.textContent = msg;
+  err.classList.add('show');
+}
+
+// ─── Tool 1: Date Difference ───────────────────────────────────────
+function calcDiff() {
+  const from = parseDate(document.getElementById('diff_from').value);
+  const to   = parseDate(document.getElementById('diff_to').value);
+  if (!from || !to) return showError('diff', 'Please select both dates.');
+
+  const msPerDay = 86400000;
+  const diffMs = to - from;
+  const totalDays = Math.round(diffMs / msPerDay);
+  const absDays = Math.abs(totalDays);
+
+  const direction = totalDays >= 0 ? 'ahead' : 'behind';
+  const weeks = Math.floor(absDays / 7);
+  const remDays = absDays % 7;
+
+  const years = Math.floor(absDays / 365.25);
+  const months = Math.floor(absDays / 30.44);
+
+  let mainText = `${absDays.toLocaleString()} day${absDays !== 1 ? 's' : ''}`;
+  if (totalDays !== 0) mainText += ` ${direction}`;
+  if (totalDays === 0) mainText = '0 days — same date';
+
+  const details = [
+    weeks > 0 ? tag(`${weeks} week${weeks !== 1 ? 's' : ''} + ${remDays} day${remDays !== 1 ? 's' : ''}`) : '',
+    months > 0 ? tag(`≈ ${months} month${months !== 1 ? 's' : ''}`) : '',
+    years > 0  ? tag(`≈ ${years} year${years !== 1 ? 's' : ''}`) : '',
+  ].filter(Boolean).join('');
+
+  showResult('diff', mainText, 'Difference', details);
+}
+
+// ─── Tool 2: Add / Subtract Days ───────────────────────────────────
+function calcAdd() {
+  const base = parseDate(document.getElementById('add_date').value);
+  const days = parseInt(document.getElementById('add_days').value);
+  const op   = document.getElementById('add_op').value;
+
+  if (!base) return showError('add', 'Please select a start date.');
+  if (isNaN(days) || days < 0) return showError('add', 'Please enter a valid number of days.');
+
+  const result = new Date(base);
+  result.setDate(result.getDate() + (op === 'add' ? days : -days));
+
+  const opLabel = op === 'add' ? `+ ${days} days` : `− ${days} days`;
+  const subText = `${formatDate(base)}  ${opLabel}`;
+  const mainText = formatDate(result);
+
+  const msPerDay = 86400000;
+  const absDiff = Math.abs(result - today);
+  const daysFromToday = Math.round(absDiff / msPerDay);
+  const rel = result > today
+    ? `${daysFromToday.toLocaleString()} day${daysFromToday !== 1 ? 's' : ''} from today`
+    : result < today
+    ? `${daysFromToday.toLocaleString()} day${daysFromToday !== 1 ? 's' : ''} ago`
+    : 'today';
+
+  showResult('add', mainText, subText, tag(rel));
+}
+
+// ─── Tool 3: From Today ─────────────────────────────────────────────
+function calcFromToday() {
+  const days = parseInt(document.getElementById('from_days').value);
+  const dir  = document.getElementById('from_dir').value;
+
+  if (isNaN(days) || days < 0) return showError('from', 'Please enter a valid number of days.');
+
+  const result = new Date(today);
+  result.setDate(result.getDate() + (dir === 'future' ? days : -days));
+
+  const subText = dir === 'future'
+    ? `Today + ${days} day${days !== 1 ? 's' : ''}`
+    : `Today − ${days} day${days !== 1 ? 's' : ''}`;
+
+  const weeks = Math.floor(days / 7);
+  const remDays = days % 7;
+
+  const details = [
+    days === 0 ? tag('That\'s today!') : '',
+    weeks > 0 ? tag(`${weeks} week${weeks !== 1 ? 's' : ''} + ${remDays} day${remDays !== 1 ? 's' : ''}`) : '',
+    tag(formatDateShort(result)),
+  ].filter(Boolean).join('');
+
+  showResult('from', formatDate(result), subText, details);
+}
+
+// ─── Tool 4: Age ────────────────────────────────────────────────────
+function calcAge() {
+  const dob   = parseDate(document.getElementById('age_dob').value);
+  const asOf  = parseDate(document.getElementById('age_as_of').value);
+
+  if (!dob)  return showError('age', 'Please enter a date of birth.');
+  if (!asOf) return showError('age', 'Please enter the "as of" date.');
+  if (dob > asOf) return showError('age', 'Date of birth must be before the "as of" date.');
+
+  let years  = asOf.getFullYear() - dob.getFullYear();
+  let months = asOf.getMonth()    - dob.getMonth();
+  let days   = asOf.getDate()     - dob.getDate();
+
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(asOf.getFullYear(), asOf.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) { years--; months += 12; }
+
+  const totalDays = Math.round((asOf - dob) / 86400000);
+  const nextBday  = new Date(asOf.getFullYear(), dob.getMonth(), dob.getDate());
+  if (nextBday <= asOf) nextBday.setFullYear(nextBday.getFullYear() + 1);
+  const daysToNext = Math.round((nextBday - asOf) / 86400000);
+
+  let mainText = `${years} year${years !== 1 ? 's' : ''}`;
+  if (months > 0 || days > 0) {
+    mainText += `, ${months} month${months !== 1 ? 's' : ''}`;
+    if (days > 0) mainText += `, ${days} day${days !== 1 ? 's' : ''}`;
+  }
+
+  const details = [
+    tag(`${totalDays.toLocaleString()} days total`),
+    tag(`${Math.floor(totalDays / 7).toLocaleString()} weeks`),
+    daysToNext < 365 ? tag(`${daysToNext} day${daysToNext !== 1 ? 's' : ''} to next birthday`) : '',
+  ].filter(Boolean).join('');
+
+  showResult('age', mainText, `Born ${formatDate(dob)}`, details);
+}
+
+// ─── Tool 5: Day of week ────────────────────────────────────────────
+function calcDOW() {
+  const d = parseDate(document.getElementById('dow_date').value);
+  if (!d) return showError('dow', 'Please select a date.');
+
+  const dayName   = DAYS[d.getDay()];
+  const monthName = MONTHS[d.getMonth()];
+
+  const startOfYear = new Date(d.getFullYear(), 0, 1);
+  const dayOfYear   = Math.round((d - startOfYear) / 86400000) + 1;
+
+  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+  const msToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.round((d - msToday) / 86400000);
+  let relStr;
+  if (diffDays === 0)       relStr = 'Today';
+  else if (diffDays === 1)  relStr = 'Tomorrow';
+  else if (diffDays === -1) relStr = 'Yesterday';
+  else if (diffDays > 0)    relStr = `In ${diffDays} days`;
+  else                      relStr = `${Math.abs(diffDays)} days ago`;
+
+  const details = [
+    tag(`Day ${dayOfYear} of ${d.getFullYear()}`),
+    tag(isWeekend ? 'Weekend' : 'Weekday'),
+    tag(relStr),
+    tag(`Week ${Math.ceil(dayOfYear / 7)}`),
+  ].join('');
+
+  showResult('dow', dayName, `${monthName} ${d.getDate()}, ${d.getFullYear()}`, details);
+}
+</script>
+
+</body>
+</html>
