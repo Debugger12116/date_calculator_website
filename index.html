@@ -44,9 +44,10 @@
 
   header {
     border-bottom: 2px solid var(--ink);
-    padding: 24px 48px;
+    padding: 16px 20px;
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 20px;
     background: var(--paper);
     position: sticky;
@@ -80,7 +81,7 @@
   main {
     max-width: 900px;
     margin: 0 auto;
-    padding: 48px 24px 80px;
+    padding: 16px 16px 60px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -97,7 +98,7 @@
   .tool-block:first-child { border-top: 1.5px solid var(--ink); }
 
   .tool-header {
-    padding: 18px 28px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -147,7 +148,7 @@
 
   .tool-body {
     display: none;
-    padding: 32px 28px;
+    padding: 20px 16px;
     animation: slideDown 0.2s ease;
   }
 
@@ -308,6 +309,13 @@
     flex: 1;
     height: 1px;
     background: var(--line);
+  }
+
+  @media(min-width: 600px) {
+    header { padding: 20px 48px; }
+    main { padding: 32px 24px 80px; }
+    .tool-header { padding: 18px 28px; }
+    .tool-body { padding: 32px 28px; }
   }
 
   footer {
@@ -489,14 +497,18 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// Today badge
-const today = new Date();
+// Today — normalized to midnight to avoid partial-day comparison bugs
+const _now = new Date();
+const today = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
 document.getElementById('todayBadge').textContent =
   `Today — ${DAYS[today.getDay()]}, ${MONTHS_SHORT[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
 
 // Set default values
 function todayStr() {
-  return today.toISOString().split('T')[0];
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 document.getElementById('diff_from').value = todayStr();
